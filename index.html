@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShoeControl</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky header with role switch, one screen per tab, fixed bottom tab bar. Phone first, centered column on wide screens. */
+:root{
+  --bg:#EEF0F4; --surface:#FFFFFF; --ink:#161A24; --muted:#5B6275; --line:#D8DCE6; --chip:#E3E7EF;
+  --accent:#2B45F5; --accent-ink:#FFFFFF;
+  --ok:#0F6F43; --ok-bg:#DAF1E5; --warn:#8F5200; --warn-bg:#FBEACB; --bad:#B3261E; --bad-bg:#FADFDB;
+  --f-display:'Unbounded','Manrope',system-ui,sans-serif;
+  --f-body:'Manrope',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F121A; --surface:#181C27; --ink:#EDEFF5; --muted:#9AA2B5; --line:#2A3040; --chip:#232938;
+  --accent:#8796FF; --accent-ink:#0F121A;
+  --ok:#5BD39A; --ok-bg:#12301F; --warn:#F2B84B; --warn-bg:#3A2A0C; --bad:#FF8A80; --bad-bg:#3C1713; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F121A; --surface:#181C27; --ink:#EDEFF5; --muted:#9AA2B5; --line:#2A3040; --chip:#232938;
+  --accent:#8796FF; --accent-ink:#0F121A;
+  --ok:#5BD39A; --ok-bg:#12301F; --warn:#F2B84B; --warn-bg:#3A2A0C; --bad:#FF8A80; --bad-bg:#3C1713; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 112px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:12px 0 10px;display:flex;flex-direction:column;gap:10px}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font:600 16px var(--f-display);letter-spacing:-.02em}
+.mark{width:30px;height:30px;border-radius:7px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 12px var(--f-display)}
+.demo{font-size:12px;color:var(--muted)}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:9px 10px;min-height:40px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+
+main{display:flex;flex-direction:column;gap:12px;padding-top:4px}
+h1{font:600 20px/1.2 var(--f-display);letter-spacing:-.02em;margin:6px 0 0}
+.sub{color:var(--muted);font-size:13px;margin-top:-6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.row>*{min-width:0}
+.grow{flex:1}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+.lbl{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
+.lbl small{font-weight:400;color:var(--muted);margin-left:6px}
+.big{font:600 28px/1.1 var(--f-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;background:var(--surface);min-width:0}
+.tile b{font:600 17px var(--f-display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tile span{font-size:12px;color:var(--muted)}
+
+input,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
+input:focus,select:focus{border-color:var(--accent)}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}
+label input,label select{font-weight:400;font-size:15px}
+.form{gap:14px}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:10px;min-height:48px;padding:0 16px;font-weight:700;width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{min-height:38px;width:auto;font-size:13px;padding:0 12px}
+.btn.ok{background:var(--ok);color:var(--surface)}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;min-height:38px;font-weight:600;font-size:13px;color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.szs{display:flex;flex-wrap:wrap;gap:6px}
+.sz{font:500 13px var(--f-mono);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);line-height:1.25}
+.sz b{font-weight:500}
+.sz i{font-style:normal;font-size:11px;color:var(--muted)}
+button.sz{min-height:48px;min-width:50px}
+.sz.low{border-color:var(--warn);background:var(--warn-bg)}
+.sz.zero{opacity:.45}
+.sz.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sz.on i{color:inherit}
+button.sz:disabled{opacity:.35;cursor:not-allowed}
+
+.pill{display:inline-block;font:600 11.5px var(--f-body);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.mute{background:var(--chip);color:var(--muted)}
+
+.bar{height:6px;background:var(--chip);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);min-width:0}
+.li:first-child{border-top:0;padding-top:0}
+.li:last-child{padding-bottom:0}
+.li .l{min-width:0;flex:1}
+.li .l div{overflow-wrap:anywhere}
+.struck{text-decoration:line-through;color:var(--muted)}
+.sum{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:baseline}
+.sum .t{font-weight:700}
+.sum .total{font:600 22px var(--f-display);letter-spacing:-.02em}
+.sep{border:0;border-top:1px solid var(--line);margin:0}
+
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:500 13px var(--f-mono);font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font:600 11.5px var(--f-body);color:var(--muted);border-top:0}
+th:first-child,td:first-child{text-align:left}
+.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.step{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:4px 6px 4px 10px;min-width:0}
+.step b{font:500 14px var(--f-mono);flex:1}
+.step button{width:38px;height:38px;border:1px solid var(--line);background:var(--chip);border-radius:8px;font-weight:700;font-size:18px}
+.step span{min-width:22px;text-align:center;font:500 14px var(--f-mono)}
+
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:0 max(8px,env(safe-area-inset-left,0px)) env(safe-area-inset-bottom,0px) max(8px,env(safe-area-inset-right,0px))}
+.nav div{max-width:640px;margin:0 auto;display:flex}
+.nav button{flex:1;min-width:0;min-height:64px;border:0;background:none;color:var(--muted);font:600 10.5px/1.1 var(--f-body);padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav .ic{position:relative;width:48px;height:30px;border-radius:15px;display:grid;place-items:center;transition:background .15s,color .15s}
+.nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--accent);font-weight:700}
+.nav button.on .ic{background:var(--accent);color:var(--accent-ink)}
+.nav .dot{position:absolute;top:-3px;right:2px;min-width:17px;height:17px;border-radius:9px;background:var(--bad);color:var(--surface);font:700 10.5px/17px var(--f-body);text-align:center;padding:0 4px;box-shadow:0 0 0 2px var(--surface)}
+@media (prefers-reduced-motion:reduce){.nav .ic{transition:none}}
+
+.login{min-height:calc(100vh - 40px);display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px 0}
+.login .brand{font-size:22px}.login .mark{width:38px;height:38px;font-size:14px;border-radius:9px}
+.err{color:var(--bad);font-weight:600;font-size:13px}
+.hint{display:flex;flex-direction:column;gap:6px}
+.hint button{display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;background:var(--chip);border:0;border-radius:10px;padding:10px 12px;min-height:44px;font-size:13px}
+.hint button span{min-width:0;overflow-wrap:anywhere}
+.who{display:flex;align-items:center;gap:8px;min-width:0}
+.who b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(12px);bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:30;
+  background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:calc(100vw - 32px);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast.bad{background:var(--bad);color:var(--surface)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<style>html{color-scheme:light}body{margin:0}@media (prefers-color-scheme: dark){html{color-scheme:dark}}</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+var STORES=[{id:'abay',name:'Абая'},{id:'zhand',name:'Жандосова'}];
+var SELLER={abay:'Айгерим',zhand:'Данияр'};
+var NID=2;
+var OWNER={login:'owner',pass:'1234',name:'Хозяин'};
+var ACC={abay:{login:'aigerim',pass:'1111'},zhand:{login:'daniyar',pass:'2222'}};
+var P=[
+ {id:1,name:'Aster Run 90',art:'AR-090',sizes:[40,41,42,43,44,45],cost:41000,price:62900},
+ {id:2,name:'Volta Classic',art:'VC-114',sizes:[38,39,40,41,42,43,44],cost:33000,price:49900},
+ {id:3,name:'Norte 574',art:'NT-574',sizes:[36,37,38,39,40,41,42,43],cost:29000,price:44900},
+ {id:4,name:'Lumo Suede',art:'LM-208',sizes:[36,37,38,39,40,41,42,43],cost:22000,price:34900},
+ {id:5,name:'Soft Step жен.',art:'SS-W07',sizes:[36,37,38,39,40,41],cost:38000,price:57900},
+ {id:6,name:'Terra Walk',art:'TW-330',sizes:[40,41,42,43,44,45],cost:31000,price:47900},
+ {id:7,name:'Retro Court',art:'RC-045',sizes:[37,38,39,40,41,42,43,44],cost:26000,price:39900},
+ {id:8,name:'Frost Boot жен.',art:'FB-W12',sizes:[36,37,38,39,40,41],cost:35000,price:52900}
+];
+var seed=11;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+P.forEach(function(p){
+  p.stock={};p.wh={};
+  var mid=p.sizes[Math.floor(p.sizes.length/2)];
+  STORES.forEach(function(s){p.stock[s.id]={};p.sizes.forEach(function(z){
+    var q=rnd()<.28?0:Math.floor(rnd()*3)+1; if(Math.abs(z-mid)<=1&&q>0)q+=1; p.stock[s.id][z]=q;});});
+  p.sizes.forEach(function(z){p.wh[z]=rnd()<.3?0:Math.floor(rnd()*7)});
+});
+function pad(n){return String(n).padStart(2,'0')}
+function hh(m){return pad(Math.floor(m/60))+':'+pad(m%60)}
+var SID=1,SALES=[];
+STORES.forEach(function(st){
+  var n=6+Math.floor(rnd()*4),times=[];
+  for(var i=0;i<n;i++)times.push(605+Math.floor(rnd()*430));
+  times.sort(function(a,b){return a-b});
+  times.forEach(function(m){
+    var p=P[Math.floor(rnd()*P.length)],sz=p.sizes[Math.floor(rnd()*p.sizes.length)];
+    var price=rnd()<.2?Math.round(p.price*.9/100)*100:p.price,r=rnd(),pay='cash',cash=price,kaspi=0;
+    if(r>.45&&r<=.85){pay='kaspi';cash=0;kaspi=price}else if(r>.85){pay='mixed';cash=Math.round(price*.4/100)*100;kaspi=price-cash}
+    SALES.push({id:SID++,t:hh(m),store:st.id,seller:SELLER[st.id],pid:p.id,size:sz,price:price,cash:cash,kaspi:kaspi,pay:pay,returned:false});
+  });
+});
+SALES.filter(function(s){return s.store==='zhand'})[1].returned=true;
+
+function prod(id){return P.filter(function(p){return p.id===id})[0]}
+function sname(id){return STORES.filter(function(s){return s.id===id})[0].name}
+var PAY={cash:'наличные',kaspi:'Kaspi',mixed:'смешанная'};
+function fmt(n){return Math.round(n).toLocaleString('ru-RU')+' ₸'}
+function num(v){return Number(String(v==null?'':v).replace(/[\s ]/g,'').replace(',','.'))||0}
+function nowT(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function sum(a,k){return a.reduce(function(s,x){return s+x[k]},0)}
+
+var LOG=[];
+SALES.forEach(function(s){
+  LOG.push({t:s.t,who:s.seller,kind:'sale',text:'Продажа: '+prod(s.pid).name+', '+s.size+' р. — '+fmt(s.price)+' ('+PAY[s.pay]+'), '+sname(s.store)});
+  if(s.returned)LOG.push({t:'16:40',who:s.seller,kind:'sale',text:'Возврат: '+prod(s.pid).name+', '+s.size+' р. — '+fmt(s.price)+', '+sname(s.store)});
+});
+LOG.push({t:'09:30',who:'Хозяин',kind:'stock',text:'Приход на склад: Aster Run 90, 42 р. — 12 пар'});
+LOG.push({t:'09:42',who:'Хозяин',kind:'stock',text:'Выдано в магазин Жандосова: Aster Run 90, 42 р. — 3 пары'});
+LOG.push({t:'18:05',who:'Данияр',kind:'cash',text:'Сдана касса, Жандосова'});
+LOG.sort(function(a,b){return a.t<b.t?1:a.t>b.t?-1:0});
+
+var S={authed:false,err:'',role:'owner',tab:'overview',store:'all',sellerStore:'abay',expand:null,q:'',logf:'all',
+  sale:{pid:1,size:null,price:null,pay:'cash',cash:''},
+  wf:{op:'in',pid:1,size:null,qty:'1',from:'abay',store:'zhand'},
+  shift:{abay:'open',zhand:'handed'}};
+
+/* Сохранение в браузере (localStorage), чтобы данные не пропадали */
+var KEY='shoecontrol_v2';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({STORES:STORES,SELLER:SELLER,ACC:ACC,P:P,SALES:SALES,LOG:LOG,SID:SID,NID:NID,shift:S.shift}))}catch(e){}}
+(function load(){try{
+  var d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d||!d.P||!d.STORES)return;
+  STORES.length=0;d.STORES.forEach(function(x){STORES.push(x)});
+  Object.keys(SELLER).forEach(function(k){delete SELLER[k]});Object.assign(SELLER,d.SELLER);
+  Object.keys(ACC).forEach(function(k){delete ACC[k]});Object.assign(ACC,d.ACC);
+  P.length=0;d.P.forEach(function(x){P.push(x)});
+  SALES.length=0;d.SALES.forEach(function(x){SALES.push(x)});
+  LOG.length=0;d.LOG.forEach(function(x){LOG.push(x)});
+  SID=d.SID;NID=d.NID;S.shift=d.shift;
+}catch(e){}})();
+
+var $=function(s){return document.querySelector(s)};
+var tt;
+function toast(m,bad){var t=$('#toast');t.textContent=m;t.className='toast show'+(bad?' bad':'');clearTimeout(tt);tt=setTimeout(function(){t.className='toast'},2400)}
+function who(){return S.role==='owner'?'Хозяин':SELLER[S.sellerStore]}
+function loginTaken(l,exceptStore){l=l.toLowerCase();if(OWNER.login.toLowerCase()===l)return true;return STORES.some(function(x){return x.id!==exceptStore&&ACC[x.id].login.toLowerCase()===l})}
+function log(kind,text){LOG.unshift({t:nowT(),who:who(),kind:kind,text:text})}
+function cur(){return S.role==='seller'?S.sellerStore:S.store}
+function ids(){var c=cur();return c==='all'?STORES.map(function(s){return s.id}):[c]}
+function saleStore(){return cur()==='all'?'abay':cur()}
+function qtyIn(p,list,z){return list.reduce(function(s,i){return s+(p.stock[i][z]||0)},0)}
+function totIn(p,list){return p.sizes.reduce(function(s,z){return s+qtyIn(p,list,z)},0)}
+function calc(list){
+  var ss=SALES.filter(function(s){return list.indexOf(s.store)>=0}),kept=ss.filter(function(s){return !s.returned}),ret=ss.filter(function(s){return s.returned});
+  return {n:kept.length,rev:sum(kept,'price'),cash:sum(kept,'cash'),kaspi:sum(kept,'kaspi'),rn:ret.length,rs:sum(ret,'price'),list:ss.slice().reverse(),
+    profit:kept.reduce(function(s,x){return s+x.price-prod(x.pid).cost},0)};
+}
+var SHIFT={open:['Смена идёт','mute'],handed:['Сдана, ждёт приёма','warn'],accepted:['Принята','ok']};
+function pill(st){return '<span class="pill '+SHIFT[st][1]+'">'+SHIFT[st][0]+'</span>'}
+
+/* ---------- views ---------- */
+function chips(all,sel){
+  var c=function(id,l){return '<button class="chip'+(sel===id?' on':'')+'" data-act="store" data-v="'+id+'">'+l+'</button>'};
+  return '<div class="chips">'+(all?c('all','Все магазины'):'')+STORES.map(function(s){return c(s.id,s.name)}).join('')+'</div>';
+}
+function head(t,s){return '<h1>'+t+'</h1>'+(s?'<div class="sub">'+s+'</div>':'')}
+
+function vOver(){
+  var all=STORES.map(function(s){return s.id}),a=calc(all);
+  var d=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  var per=STORES.map(function(s){return {s:s,c:calc([s.id])}}),mx=Math.max.apply(null,per.map(function(x){return x.c.rev}))||1;
+  var low=P.map(function(p){var miss=p.sizes.filter(function(z){return qtyIn(p,all,z)===0});return {p:p,miss:miss}})
+    .filter(function(x){return x.miss.length}).sort(function(x,y){return y.miss.length-x.miss.length}).slice(0,4);
+  var sellers=STORES.map(function(s){var c=calc([s.id]);return {n:SELLER[s.id],st:s.name,c:c}});
+  return head('Обзор','Сегодня, '+d)+
+  '<section class="card"><div><div class="small muted">Выручка за день, все магазины</div><div class="big">'+fmt(a.rev)+'</div></div>'+
+  '<div class="tiles"><div class="tile"><b>'+a.n+'</b><span>пар продано</span></div><div class="tile"><b>'+a.rn+'</b><span>возвратов</span></div><div class="tile"><b>'+fmt(a.profit)+'</b><span>валовая прибыль</span></div></div></section>'+
+  '<section class="card"><div class="lbl" style="margin:0">По магазинам</div><div class="list">'+per.map(function(x){
+    return '<div class="li" style="flex-direction:column;align-items:stretch;gap:6px"><div class="row"><b>'+x.s.name+'</b><span class="num">'+fmt(x.c.rev)+'</span></div><div class="bar"><i style="width:'+Math.round(x.c.rev/mx*100)+'%"></i></div><div class="row small muted"><span>'+x.c.n+' пар · касса '+fmt(x.c.cash)+' нал.</span>'+pill(S.shift[x.s.id])+'</div></div>'}).join('')+'</div></section>'+
+  '<section class="card"><div class="lbl" style="margin:0">Продавцы за сегодня</div><div class="list">'+sellers.map(function(x){
+    return '<div class="li"><div class="l"><div>'+x.n+'</div><div class="small muted">'+x.st+'</div></div><div style="text-align:right"><div class="num">'+fmt(x.c.rev)+'</div><div class="small muted">'+x.c.n+' пар</div></div></div>'}).join('')+'</div></section>'+
+  '<section class="card"><div class="lbl" style="margin:0">Нет в наличии ни в одном магазине</div><div class="list">'+low.map(function(x){
+    return '<div class="li"><div class="l"><div>'+x.p.name+'</div><div class="small muted mono">'+x.p.art+'</div></div><div class="szs">'+x.miss.slice(0,4).map(function(z){return '<span class="sz zero"><b>'+z+'</b></span>'}).join('')+(x.miss.length>4?'<span class="small muted">+'+(x.miss.length-4)+'</span>':'')+'</div></div>'}).join('')+'</div></section>';
+}
+
+function vSale(){
+  var st=saleStore(),p=prod(S.sale.pid),price=S.sale.price==null?p.price:S.sale.price,owner=S.role==='owner';
+  var recent=SALES.filter(function(s){return s.store===st}).slice(-4).reverse();
+  return head('Продажа',owner?'Оформление продажи от лица хозяина':'Магазин '+sname(st)+' · '+SELLER[st])+
+  (owner?chips(false,st):'')+
+  '<section class="card form">'+
+   '<label>Модель<select id="f-pid" data-f="sale.pid" data-r data-n>'+P.map(function(m){return '<option value="'+m.id+'"'+(m.id===p.id?' selected':'')+'>'+m.name+' · '+m.art+'</option>'}).join('')+'</select></label>'+
+   '<div><span class="lbl">Размер<small>в наличии, '+sname(st)+'</small></span><div class="szs">'+p.sizes.map(function(z){var q=p.stock[st][z];
+     return '<button class="sz'+(S.sale.size===z?' on':'')+'" data-act="size" data-v="'+z+'"'+(q?'':' disabled')+'><b>'+z+'</b><i>'+q+'</i></button>'}).join('')+'</div></div>'+
+   '<label>Цена, ₸<input id="f-price" data-f="sale.price" inputmode="numeric" value="'+price+'"></label>'+
+   '<div><span class="lbl">Оплата</span><div class="seg">'+['cash','kaspi','mixed'].map(function(k){return '<button data-act="pay" data-v="'+k+'" class="'+(S.sale.pay===k?'on':'')+'">'+(k==='cash'?'Наличные':k==='kaspi'?'Kaspi':'Смешанная')+'</button>'}).join('')+'</div></div>'+
+   (S.sale.pay==='mixed'?'<label>Наличными, ₸ (остальное переводом)<input id="f-cash" data-f="sale.cash" inputmode="numeric" value="'+S.sale.cash+'" placeholder="например 20000"></label>':'')+
+   '<button class="btn" data-act="sell">Оформить продажу</button>'+
+  '</section>'+
+  '<section class="card"><div class="lbl" style="margin:0">Последние продажи, '+sname(st)+'</div><div class="list">'+recent.map(saleRow(false)).join('')+'</div></section>';
+}
+function saleRow(canRet){return function(s){
+  var p=prod(s.pid);
+  return '<div class="li"><div class="l"><div'+(s.returned?' class="struck"':'')+'>'+p.name+' · <span class="mono">'+s.size+'</span></div><div class="small muted"><span class="mono">'+s.t+'</span> · '+s.seller+' · '+PAY[s.pay]+'</div></div>'+
+    '<div style="text-align:right"><div class="num'+(s.returned?' struck':'')+'">'+fmt(s.price)+'</div>'+
+    (s.returned?'<span class="pill bad">возврат</span>':(canRet&&S.shift[s.store]==='open'?'<button class="btn ghost sm" data-act="ret" data-v="'+s.id+'">Возврат</button>':''))+'</div></div>';
+}}
+
+function vStock(){
+  var list=ids(),owner=S.role==='owner',c=cur();
+  var h=head('Остатки',owner?(c==='all'?'Все магазины, сумма по размерам':'Магазин '+sname(c)):'Магазин '+sname(c));
+  if(owner)h+=chips(true,c);
+  h+='<input id="q" type="search" placeholder="Поиск: модель или артикул" autocomplete="off" value="'+S.q.replace(/"/g,'')+'">';
+  h+=P.map(function(p){
+    var tot=totIn(p,list),open=owner&&S.expand===p.id,key=(p.name+' '+p.art).toLowerCase();
+    var hid=S.q&&key.indexOf(S.q.toLowerCase())<0?' hidden':'';
+    var body='';
+    if(open&&c!=='all'){
+      body='<div class="steps">'+p.sizes.map(function(z){return '<div class="step"><b>'+z+'</b><button data-act="adj" data-p="'+p.id+'" data-st="'+c+'" data-z="'+z+'" data-d="-1" aria-label="Минус, размер '+z+'">−</button><span>'+p.stock[c][z]+'</span><button data-act="adj" data-p="'+p.id+'" data-st="'+c+'" data-z="'+z+'" data-d="1" aria-label="Плюс, размер '+z+'">+</button></div>'}).join('')+'</div><div class="small muted">Кнопки меняют остаток и записываются в журнал.</div>';
+    }else if(open){
+      body='<div class="tablewrap"><table><thead><tr><th>Размер</th>'+STORES.map(function(s){return '<th>'+s.name+'</th>'}).join('')+'<th>Σ</th></tr></thead><tbody>'+p.sizes.map(function(z){
+        return '<tr><td>'+z+'</td>'+STORES.map(function(s){return '<td>'+p.stock[s.id][z]+'</td>'}).join('')+'<td>'+qtyIn(p,list,z)+'</td></tr>'}).join('')+'</tbody></table></div>';
+    }else{
+      body='<div class="szs">'+p.sizes.map(function(z){var q=qtyIn(p,list,z);return '<span class="sz'+(q===0?' zero':q===1&&c!=='all'?' low':'')+'"><b>'+z+'</b><i>'+q+'</i></span>'}).join('')+'</div>';
+    }
+    var tag=tot<=6?'<span class="pill warn">мало</span>':'<span class="pill mute">'+tot+' пар</span>';
+    var headEl=owner?'<button class="row" style="background:none;border:0;padding:0;text-align:left" data-act="exp" data-v="'+p.id+'" aria-expanded="'+open+'">':'<div class="row">';
+    var headEnd=owner?'</button>':'</div>';
+    return '<section class="card prow"'+hid+' data-k="'+key+'">'+headEl+'<div class="grow"><div style="font-weight:700">'+p.name+'</div><div class="small muted"><span class="mono">'+p.art+'</span> · '+fmt(p.price)+'</div></div>'+tag+headEnd+body+'</section>';
+  }).join('');
+  return h;
+}
+
+function stSel(id,f,val,l){return '<label>'+l+'<select id="'+id+'" data-f="'+f+'">'+STORES.map(function(s){return '<option value="'+s.id+'"'+(s.id===val?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></label>'}
+function vWh(){
+  var w=S.wf,p=prod(w.pid);
+  if(!w.size||p.sizes.indexOf(Number(w.size))<0)w.size=p.sizes[Math.floor(p.sizes.length/2)];
+  w.size=Number(w.size);
+  var h=head('Склад','Общий склад: приход товара и выдача в магазины');
+  h+='<section class="card form"><div class="seg">'+
+    '<button data-act="wfop" data-v="in" class="'+(w.op==='in'?'on':'')+'">Приход</button><button data-act="wfop" data-v="out" class="'+(w.op==='out'?'on':'')+'">Выдача</button><button data-act="wfop" data-v="move" class="'+(w.op==='move'?'on':'')+'">Перенос</button></div>'+
+    '<label>Модель<select id="w-pid" data-f="wf.pid" data-r data-n>'+P.map(function(m){return '<option value="'+m.id+'"'+(m.id===p.id?' selected':'')+'>'+m.name+' · '+m.art+'</option>'}).join('')+'</select></label>'+
+    '<div class="row" style="align-items:flex-end"><label class="grow">Размер<select id="w-size" data-f="wf.size" data-r data-n>'+p.sizes.map(function(z){return '<option value="'+z+'"'+(z===w.size?' selected':'')+'>'+z+'</option>'}).join('')+'</select></label>'+
+    '<label style="width:42%">Пар<input id="w-qty" data-f="wf.qty" inputmode="numeric" value="'+w.qty+'"></label></div>'+
+    (w.op==='move'?stSel('w-from','wf.from',w.from,'Из магазина'):'')+(w.op!=='in'?stSel('w-store','wf.store',w.store,w.op==='move'?'В магазин':'В магазин (со склада)'):'')+
+    '<div class="small muted">'+(w.op==='move'?'В магазине-отправителе сейчас: <b class="mono">'+((p.stock[w.from]||{})[w.size]||0)+'</b>':'На складе сейчас: <b class="mono">'+p.wh[w.size]+'</b>')+' пар, размер '+w.size+'</div>'+
+    '<button class="btn" data-act="wfgo">'+(w.op==='in'?'Принять на склад':w.op==='out'?'Выдать в магазин':'Перенести товар')+'</button></section>';
+  h+=P.map(function(m){var t=m.sizes.reduce(function(s,z){return s+m.wh[z]},0);
+    return '<section class="card"><div class="row"><div><div style="font-weight:700">'+m.name+'</div><div class="small muted mono">'+m.art+'</div></div><span class="pill mute">'+t+' пар</span></div><div class="szs">'+m.sizes.map(function(z){var q=m.wh[z];return '<span class="sz'+(q===0?' zero':'')+'"><b>'+z+'</b><i>'+q+'</i></span>'}).join('')+'</div></section>'}).join('');
+  return h;
+}
+
+function vCash(){
+  var c=cur(),list=ids(),a=calc(list),owner=S.role==='owner';
+  var h=head('Касса','Сегодня, '+(c==='all'?'все магазины':'магазин '+sname(c)));
+  if(owner)h+=chips(true,c);
+  h+='<section class="card"><div class="sum">'+
+    '<span>Продано</span><span class="num"><b>'+a.n+'</b> пар · '+fmt(a.rev)+'</span>'+
+    '<span>Наличные</span><span class="num">'+fmt(a.cash)+'</span>'+
+    '<span>Kaspi и переводы</span><span class="num">'+fmt(a.kaspi)+'</span>'+
+    '<span>Возвраты</span><span class="num">'+a.rn+' · '+fmt(a.rs)+'</span></div><hr class="sep">'+
+    '<div class="sum"><span class="t">К сдаче наличными</span><span class="total">'+fmt(a.cash)+'</span></div></section>';
+  if(c==='all'){
+    h+='<section class="card"><div class="lbl" style="margin:0">Сдача кассы по магазинам</div><div class="list">'+STORES.map(function(s){var x=calc([s.id]);
+      return '<div class="li"><div class="l"><div>'+s.name+' · '+SELLER[s.id]+'</div><div class="small muted num">к сдаче '+fmt(x.cash)+'</div></div><div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+pill(S.shift[s.id])+(S.shift[s.id]==='handed'?'<button class="btn sm ok" data-act="accept" data-v="'+s.id+'">Принять</button>':'')+'</div></div>'}).join('')+'</div></section>';
+  }else{
+    var st=S.shift[c],act='';
+    if(st==='open'&&!owner)act='<button class="btn" data-act="hand" data-v="'+c+'">Сдать кассу · '+fmt(a.cash)+'</button>';
+    if(st==='handed'&&owner)act='<button class="btn ok" data-act="accept" data-v="'+c+'">Принять кассу · '+fmt(a.cash)+'</button>';
+    h+='<section class="card"><div class="row"><div><div style="font-weight:700">Смена, '+sname(c)+'</div><div class="small muted">'+SELLER[c]+'</div></div>'+pill(st)+'</div>'+act+
+      (st==='open'&&owner?'<div class="small muted">Продавец сдаст кассу вечером, вы увидите кнопку «Принять».</div>':'')+
+      (st==='handed'&&!owner?'<div class="small muted">Хозяин увидит сумму и подтвердит приём.</div>':'')+'</section>';
+  }
+  h+='<section class="card"><div class="lbl" style="margin:0">Продажи за день</div><div class="list">'+(a.list.length?a.list.map(saleRow(true)).join(''):'<div class="muted">Продаж пока нет</div>')+'</div></section>';
+  return h;
+}
+
+function vLog(){
+  var f=S.logf,items=LOG.filter(function(e){return f==='all'||e.kind===f}).slice(0,60);
+  var c=function(k,l){return '<button class="chip'+(f===k?' on':'')+'" data-act="logf" data-v="'+k+'">'+l+'</button>'};
+  return head('Журнал','Все действия продавцов и хозяина')+'<div class="chips">'+c('all','Все')+c('sale','Продажи')+c('stock','Товар')+c('cash','Касса')+c('set','Настройки')+'</div>'+
+   '<section class="card"><div class="list">'+items.map(function(e){return '<div class="li" style="align-items:flex-start"><span class="mono small muted" style="padding-top:1px">'+e.t+'</span><div class="l"><div>'+e.text+'</div><div class="small muted">'+e.who+'</div></div></div>'}).join('')+'</div></section>';
+}
+
+function esc(t){return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function vStores(){
+  var h=head('Магазины','Названия, продавцы и новые точки');
+  h+=STORES.map(function(s){return '<section class="card form"><div class="row"><b>'+esc(s.name)+'</b>'+pill(S.shift[s.id])+'</div>'+
+    '<label>Название магазина<input id="sn-'+s.id+'" value="'+esc(s.name)+'" maxlength="40"></label>'+
+    '<label>Имя продавца<input id="sl-'+s.id+'" value="'+esc(SELLER[s.id])+'" maxlength="40"></label>'+
+    '<div class="row" style="align-items:flex-end;gap:8px"><label class="grow">Логин продавца<input id="lg-'+s.id+'" value="'+esc(ACC[s.id].login)+'" maxlength="30" autocapitalize="none"></label><label class="grow">Пароль<input id="pw-'+s.id+'" value="'+esc(ACC[s.id].pass)+'" maxlength="30"></label></div>'+
+    '<div class="small muted">Этот продавец заходит только в магазин «'+esc(s.name)+'».</div>'+
+    '<button class="btn" data-act="saveStore" data-v="'+s.id+'">Сохранить</button></section>'}).join('');
+  h+='<section class="card form"><div><div class="lbl" style="margin:0">Новый магазин</div><div class="small muted">Остатки у нового магазина нулевые, товар выдаётся со склада.</div></div>'+
+    '<label>Название магазина<input id="new-sn" maxlength="40" placeholder="например, Абылай хана"></label>'+
+    '<label>Имя продавца<input id="new-sl" maxlength="40" placeholder="Имя продавца"></label>'+
+    '<div class="row" style="align-items:flex-end;gap:8px"><label class="grow">Логин продавца<input id="new-lg" maxlength="30" autocapitalize="none"></label><label class="grow">Пароль<input id="new-pw" maxlength="30"></label></div>'+
+    '<button class="btn" data-act="addStore">Добавить магазин</button></section>'+
+    '<section class="card"><div class="small muted">Данные сохраняются в этом браузере. Сброс вернёт демо-данные.</div><button class="btn ghost" data-act="reset">Сбросить демо-данные</button></section>';
+  return h;
+}
+var ICONS={
+ overview:'<path d="M4 20V11M10 20V4M16 20v-6M21 20H3"/>',
+ sale:'<path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+ stock:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/>',
+ wh:'<path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/>',
+ cash:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14.5h.01"/>',
+ log:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+ stores:'<path d="M4 9l1-5h14l1 5"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/>'};
+var TABS={owner:[['overview','Обзор'],['sale','Продажа'],['stock','Остатки'],['wh','Склад'],['cash','Касса'],['log','Журнал'],['stores','Магазины']],seller:[['sale','Продажа'],['stock','Остатки'],['cash','Касса']]};
+var VIEWS={stores:vStores,overview:vOver,sale:vSale,stock:vStock,wh:vWh,cash:vCash,log:vLog};
+
+function vLogin(){
+  var hs=[['Хозяин',OWNER.login,OWNER.pass]].concat(STORES.map(function(x){return ['Продавец · '+x.name,ACC[x.id].login,ACC[x.id].pass]}));
+  return '<div class="login"><div class="brand"><span class="mark">SC</span>ShoeControl</div>'+
+   '<form id="lf" class="card form" autocomplete="off"><div><div class="lbl" style="margin:0;font-size:16px">Вход</div><div class="small muted">Хозяин видит все магазины. Продавец видит только свой.</div></div>'+
+   '<label>Логин<input id="lg-l" autocapitalize="none" autocomplete="off" value="'+esc(S.lastLogin||'')+'"></label>'+
+   '<label>Пароль<input id="lg-p" type="password" autocomplete="off"></label>'+
+   (S.err?'<div class="err" role="alert">'+S.err+'</div>':'')+
+   '<button class="btn" type="submit">Войти</button></form>'+
+   '<div class="card"><div><div class="lbl" style="margin:0">Демо-доступ</div><div class="small muted">Нажмите на строку, чтобы подставить логин и пароль</div></div><div class="hint">'+hs.map(function(h){return '<button type="button" data-act="fill" data-l="'+esc(h[1])+'" data-p="'+esc(h[2])+'"><span>'+esc(h[0])+'</span><span class="mono">'+esc(h[1])+' / '+esc(h[2])+'</span></button>'}).join('')+'</div></div></div>';
+}
+function render(){
+  save();
+  if(!S.authed){$('#app').innerHTML=vLogin();return}
+  var y=window.scrollY;
+  var o=S.role==='owner';
+  $('#app').innerHTML=
+   '<header class="top"><div class="brandrow"><div class="brand"><span class="mark">SC</span>ShoeControl</div><span class="demo">Демо · данные условные</span></div>'+
+   '<div class="row"><div class="who"><span class="pill '+(o?'ok':'mute')+'">'+(o?'Хозяин':'Продавец')+'</span><b>'+esc(o?OWNER.name:SELLER[S.sellerStore]+' · '+sname(S.sellerStore))+'</b></div><button class="btn ghost sm" data-act="logout">Выйти</button></div></header>'+
+   '<main>'+VIEWS[S.tab]()+'</main>'+
+   '<nav class="nav" aria-label="Разделы"><div>'+TABS[S.role].map(function(t){
+     var bd=t[0]==='cash'&&o?STORES.filter(function(x){return S.shift[x.id]==='handed'}).length:0;
+     return '<button data-act="tab" data-v="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'"'+(S.tab===t[0]?' aria-current="page"':'')+'><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">'+ICONS[t[0]]+'</svg>'+(bd?'<span class="dot">'+bd+'</span>':'')+'</span>'+t[1]+'</button>'}).join('')+'</div></nav>';
+  window.scrollTo(0,y);
+}
+
+/* ---------- actions ---------- */
+function sell(){
+  var st=saleStore(),p=prod(S.sale.pid),z=S.sale.size;
+  if(!z){toast('Выберите размер',1);return}
+  if(!p.stock[st][z]){toast('Этого размера нет в магазине',1);return}
+  var price=num(S.sale.price==null?p.price:S.sale.price);
+  if(price<=0){toast('Укажите цену',1);return}
+  var cash=price,kaspi=0,pay=S.sale.pay;
+  if(pay==='kaspi'){cash=0;kaspi=price}
+  if(pay==='mixed'){cash=num(S.sale.cash);if(cash<=0||cash>=price){toast('Наличными: меньше цены и больше нуля',1);return}kaspi=price-cash}
+  SALES.push({id:SID++,t:nowT(),store:st,seller:who(),pid:p.id,size:z,price:price,cash:cash,kaspi:kaspi,pay:pay,returned:false});
+  p.stock[st][z]--;
+  log('sale','Продажа: '+p.name+', '+z+' р. — '+fmt(price)+' ('+PAY[pay]+'), '+sname(st));
+  S.sale.size=null;S.sale.cash='';S.sale.price=null;
+  render();toast('Продано · остаток '+p.name+' '+z+': '+p.stock[st][z]);
+}
+function ret(id){
+  var s=SALES.filter(function(x){return x.id===id})[0];if(!s||s.returned)return;
+  s.returned=true;prod(s.pid).stock[s.store][s.size]++;
+  log('sale','Возврат: '+prod(s.pid).name+', '+s.size+' р. — '+fmt(s.price)+', '+sname(s.store));
+  render();toast('Возврат оформлен, пара вернулась в остаток');
+}
+function adj(pid,st,z,d){
+  var p=prod(pid),q=p.stock[st][z],n=Math.max(0,q+d);if(n===q)return;
+  p.stock[st][z]=n;log('stock','Корректировка: '+p.name+', '+z+' р., '+sname(st)+': '+q+' → '+n);render();
+}
+function wfGo(){
+  var w=S.wf,p=prod(w.pid),z=Number(w.size),q=Math.floor(num(w.qty));
+  if(q<=0){toast('Укажите количество пар',1);return}
+  if(w.op==='in'){p.wh[z]+=q;log('stock','Приход на склад: '+p.name+', '+z+' р. — '+q+' пар');render();toast('Принято на склад: '+q+' пар')}
+  else if(w.op==='move'){
+    if(w.from===w.store){toast('Выберите разные магазины',1);return}
+    if(!(p.stock[w.from][z]>=q)){toast('В магазине «'+sname(w.from)+'» только '+(p.stock[w.from][z]||0)+' пар',1);return}
+    p.stock[w.from][z]-=q;p.stock[w.store][z]=(p.stock[w.store][z]||0)+q;
+    log('stock','Перенос: '+p.name+', '+z+' р. — '+q+' пар, '+sname(w.from)+' → '+sname(w.store));render();toast('Перенесено: '+q+' пар');
+  }
+  else{
+    if(p.wh[z]<q){toast('На складе только '+p.wh[z]+' пар',1);return}
+    p.wh[z]-=q;p.stock[w.store][z]+=q;log('stock','Выдано в магазин '+sname(w.store)+': '+p.name+', '+z+' р. — '+q+' пар');render();toast('Выдано в '+sname(w.store)+': '+q+' пар');
+  }
+}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+  var a=b.dataset.act,v=b.dataset.v;
+  if(a==='role'){S.role=v;S.tab=v==='owner'?'overview':'sale';S.store='all';S.expand=null;render();window.scrollTo(0,0)}
+  else if(a==='tab'){S.tab=v;S.expand=null;render();window.scrollTo(0,0)}
+  else if(a==='store'){S.store=v;S.expand=null;render()}
+  else if(a==='size'){S.sale.size=Number(v);render()}
+  else if(a==='pay'){S.sale.pay=v;render()}
+  else if(a==='sell')sell();
+  else if(a==='exp'){S.expand=S.expand===Number(v)?null:Number(v);render()}
+  else if(a==='adj')adj(Number(b.dataset.p),b.dataset.st,Number(b.dataset.z),Number(b.dataset.d));
+  else if(a==='wfop'){S.wf.op=v;render()}
+  else if(a==='wfgo')wfGo();
+  else if(a==='ret')ret(Number(v));
+  else if(a==='hand'){S.shift[v]='handed';log('cash','Сдана касса, '+sname(v));render();toast('Касса сдана, ждёт подтверждения')}
+  else if(a==='accept'){S.shift[v]='accepted';log('cash','Принята касса, '+sname(v)+' — '+fmt(calc([v]).cash)+' наличными');render();toast('Касса принята')}
+  else if(a==='logf'){S.logf=v;render()}
+  else if(a==='logout'){S.authed=false;S.err='';S.expand=null;render();window.scrollTo(0,0)}
+  else if(a==='fill'){$('#lg-l').value=b.dataset.l;$('#lg-p').value=b.dataset.p;S.err='';var er=document.querySelector('.err');if(er)er.remove()}
+  else if(a==='saveStore'){
+    var n=$('#sn-'+v).value.trim(),l=$('#sl-'+v).value.trim(),st=STORES.filter(function(x){return x.id===v})[0];
+    var lg=$('#lg-'+v).value.trim(),pw=$('#pw-'+v).value.trim();
+    if(!n||!l||!lg||!pw){toast('Заполните название, имя, логин и пароль',1);return}
+    if(loginTaken(lg,v)){toast('Такой логин уже занят',1);return}
+    if(STORES.some(function(x){return x.id!==v&&x.name.toLowerCase()===n.toLowerCase()})){toast('Магазин с таким названием уже есть',1);return}
+    if(n!==st.name){log('set','Магазин переименован: '+st.name+' → '+n);st.name=n}
+    if(lg!==ACC[v].login||pw!==ACC[v].pass){log('set','Изменён доступ продавца магазина '+st.name+' (логин: '+lg+')');ACC[v].login=lg;ACC[v].pass=pw}
+    if(l!==SELLER[v]){log('set','Продавец магазина '+st.name+': '+SELLER[v]+' → '+l);SELLER[v]=l}
+    render();toast('Сохранено');
+  }
+  else if(a==='reset'){if(confirm('Сбросить все данные до демо?')){try{localStorage.removeItem(KEY)}catch(x){}location.reload()}}
+  else if(a==='addStore'){
+    var n2=$('#new-sn').value.trim(),l2=$('#new-sl').value.trim();
+    var lg2=$('#new-lg').value.trim(),pw2=$('#new-pw').value.trim();
+    if(!n2||!l2||!lg2||!pw2){toast('Укажите название, продавца, логин и пароль',1);return}
+    if(loginTaken(lg2,null)){toast('Такой логин уже занят',1);return}
+    if(STORES.some(function(x){return x.name.toLowerCase()===n2.toLowerCase()})){toast('Магазин с таким названием уже есть',1);return}
+    var id='n'+(++NID);STORES.push({id:id,name:n2});SELLER[id]=l2;ACC[id]={login:lg2,pass:pw2};S.shift[id]='open';
+    P.forEach(function(p){p.stock[id]={};p.sizes.forEach(function(z){p.stock[id][z]=0})});
+    log('set','Добавлен магазин '+n2+', продавец '+l2+' (логин: '+lg2+')');render();toast('Магазин добавлен. Выдайте товар со склада');
+  }
+});
+document.addEventListener('submit',function(e){
+  if(e.target.id!=='lf')return;e.preventDefault();
+  var l=$('#lg-l').value.trim().toLowerCase(),pw=$('#lg-p').value;
+  if(l===OWNER.login.toLowerCase()&&pw===OWNER.pass){S.authed=true;S.role='owner';S.tab='overview';S.store='all';S.err='';render();window.scrollTo(0,0);return}
+  var st=STORES.filter(function(x){return ACC[x.id].login.toLowerCase()===l&&ACC[x.id].pass===pw})[0];
+  if(st){S.authed=true;S.role='seller';S.sellerStore=st.id;S.tab='sale';S.err='';render();window.scrollTo(0,0);return}
+  S.err='Неверный логин или пароль';S.lastLogin=$('#lg-l').value;render();
+});
+function setPath(path,val){var k=path.split('.');S[k[0]][k[1]]=val}
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='q'){S.q=t.value;var q=t.value.toLowerCase();document.querySelectorAll('.prow').forEach(function(r){r.hidden=!!q&&r.dataset.k.indexOf(q)<0});return}
+  if(t.dataset&&t.dataset.f)setPath(t.dataset.f,t.dataset.n!==undefined?Number(t.value):t.value);
+});
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t.dataset||!t.dataset.f)return;
+  setPath(t.dataset.f,t.dataset.n!==undefined?Number(t.value):t.value);
+  if(t.dataset.f==='sale.pid'){S.sale.size=null;S.sale.price=null}
+  if(t.dataset.f==='wf.pid')S.wf.size=null;
+  if(t.dataset.r!==undefined)render();
+});
+render();
+})();
+</script>
+</body>
+</html>
